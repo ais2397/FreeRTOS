@@ -6,6 +6,7 @@ ARCH    = $(CROSS)ar
 BUILD_DIR       = build
 RTOS_SOURCE_DIR = $(abspath ../../Source)
 DEMO_SOURCE_DIR = $(abspath ../Common/Minimal)
+LIB_PATH        = $(abspath rust_hook/target/riscv64gc-unknown-none-elf)
 
 CPPFLAGS = \
 	-D__riscv_float_abi_soft \
@@ -25,6 +26,7 @@ LDFLAGS = -nostartfiles -Tfake_rom.lds \
 	-Xlinker --gc-sections \
 	-Xlinker --defsym=__stack_size=300 \
 	-Xlinker -Map=$(BUILD_DIR)/RTOSDemo.map
+	-L$(LIB_PATH) -lhook
 
 ifeq ($(DEBUG), 1)
     CFLAGS += -Og -ggdb3
@@ -32,7 +34,7 @@ else
     CFLAGS += -O2
 endif
 
-SRCS = main.c main_blinky.c riscv-virt.c ns16550.c \
+SRCS = main.c main_blinky.c riscv-virt.c ns16550.c\
 	$(DEMO_SOURCE_DIR)/EventGroupsDemo.c \
 	$(DEMO_SOURCE_DIR)/TaskNotify.c \
 	$(DEMO_SOURCE_DIR)/TimerDemo.c \
@@ -51,6 +53,8 @@ SRCS = main.c main_blinky.c riscv-virt.c ns16550.c \
 ASMS = start.S vector.S\
 	$(RTOS_SOURCE_DIR)/portable/GCC/RISC-V/portASM.S
 
+all: $(BUILD_DIR)/RTOSDemo.axf #$(BUILD_DIR)/RTOSDemo.a copylib
+
 OBJS = $(SRCS:%.c=$(BUILD_DIR)/%.o) $(ASMS:%.S=$(BUILD_DIR)/%.o)
 DEPS = $(SRCS:%.c=$(BUILD_DIR)/%.d) $(ASMS:%.S=$(BUILD_DIR)/%.d)
 
@@ -65,6 +69,12 @@ $(BUILD_DIR)/%.o: %.S Makefile
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
+#for static library
+#$(BUILD_DIR)/%.a: $(OBJS)
+#	$(ARCH) rcs $@ $^
+
+copylib:	$(BUILD_DIR)/RTOSDemo.a
+	cp $(BUILD_DIR)/RTOSDemo.a hook/.
 clean:
 	rm -rf $(BUILD_DIR)
 
